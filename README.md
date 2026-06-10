@@ -234,6 +234,24 @@ shadow_ai/
 
 ---
 
+## Future work
+
+These are the concrete next steps if this were moving toward production.
+
+**Persistence layer.** Alerts currently export to JSONL files. A time-series store (TimescaleDB or InfluxDB) would enable per-user threat history, alert deduplication across runs, and trend queries — which department is generating the most incidents this month, which AI endpoint is most frequently targeted. The pipeline's stateless design means this is an output-layer addition, nothing upstream changes.
+
+**Session-level correlation.** The current scanner evaluates each payload independently. A user exfiltrating data gradually — one field per request, each individually below the detection threshold — would not be caught. Addressing this requires a session aggregation layer that tracks cumulative entity exposure per user across a rolling time window before the policy engine runs.
+
+**Authenticated rate limiting.** The Redis counter currently keys on client IP. Behind a corporate proxy, many users share one IP and the rate limit becomes a shared bucket. Keying on an authenticated user identity (from a JWT or API key) is the correct approach for an enterprise deployment.
+
+**Policy as configuration.** The three built-in rules (department restriction, after-hours, volume threshold) are Python functions registered at startup. Externalising these into a YAML or JSON policy file would let security teams adjust thresholds and add rules without a code deployment — which is how production DLP policy management actually works.
+
+**AI endpoint coverage.** The seven domain patterns in `config.py` are a snapshot. A production deployment would subscribe to a threat intelligence feed for AI service domains rather than maintaining a static compiled list. This is especially relevant as organisations deploy self-hosted models and internal AI gateways.
+
+**Deeper payload inspection.** The pipeline inspects plaintext payloads. Base64-encoded content, multipart form data, and JSON-embedded strings containing PII are not currently decoded before scanning. A pre-processing normalisation layer upstream of Presidio would close this gap.
+
+---
+
 ## License
 
 MIT
