@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+*.so
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+ENV/
+
+# Runtime output (never commit PII scan results)
+threat_model_output/
+*.jsonl
+*.loki.jsonl
+audit.log
+proxy_logs.jsonl
+
+# Secrets — NEVER commit tokens, keys, or credentials
+.env
+.env.*
+secrets.yaml
+*.pem
+*.key
+*.p12
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Test artefacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Byte-compiled
+*.pyc

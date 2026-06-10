@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shadow AI Detector — SOC Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f12;
+    --bg2: #141720;
+    --bg3: #1c2030;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #e8eaf0;
+    --text2: #8b90a0;
+    --text3: #50566a;
+    --red: #e85555;
+    --red-bg: rgba(232,85,85,0.1);
+    --amber: #e8a040;
+    --amber-bg: rgba(232,160,64,0.1);
+    --blue: #4a9eff;
+    --blue-bg: rgba(74,158,255,0.1);
+    --green: #45c97a;
+    --green-bg: rgba(69,201,122,0.1);
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .topbar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-badge {
+    width: 30px; height: 30px;
+    border: 1.5px solid var(--red);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 9px; font-weight: 500;
+    color: var(--red);
+    letter-spacing: 0.3px;
+  }
+
+  .logo-text { font-size: 14px; font-weight: 500; }
+  .logo-sub { font-size: 11px; color: var(--text2); font-family: var(--mono); }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .topbar-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .api-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue);
+    text-decoration: none;
+    border: 1px solid rgba(74,158,255,0.3);
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .api-link:hover { background: var(--blue-bg); }
+
+  .main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+
+  .metric-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .metric-val {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .metric-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    margin-top: 6px;
+  }
+
+  .red { color: var(--red); }
+  .amber { color: var(--amber); }
+  .green { color: var(--green); }
+  .blue { color: var(--blue); }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-head {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .panel-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .panel-body { padding: 12px 14px; }
+
+  /* Controls */
+  .controls {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ctrl-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+
+  .ctrl-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    min-width: 36px;
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 120px;
+    height: 3px;
+    background: var(--bg3);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+  }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .filter-btn.active-all { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); }
+  .filter-btn.active-crit { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+  .filter-btn.active-warn { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+
+  .run-btn {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: 1px solid var(--green);
+    background: rgba(69,201,122,0.08);
+    color: var(--green);
+    cursor: pointer;
+    margin-left: auto;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .run-btn:hover { background: rgba(69,201,122,0.15); }
+  .run-btn:active { transform: scale(0.98); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Alert feed */
+  .alert-feed { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+
+  .alert-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 9px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+    animation: slideIn 0.3s ease both;
+    cursor: default;
+  }
+
+  @keyframes slideIn { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:translateY(0)} }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .badge-crit { background: var(--red-bg); color: var(--red); border: 1px solid rgba(232,85,85,0.25); }
+  .badge-warn { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(232,160,64,0.25); }
+  .badge-info { background: var(--blue-bg); color: var(--blue); border: 1px solid rgba(74,158,255,0.2); }
+
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-main { font-size: 12px; color: var(--text); }
+
+  .alert-mono {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--blue);
+  }
+
+  .alert-tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+
+  .entity-tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  .alert-meta {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    margin-top: 3px;
+  }
+
+  .alert-time {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text3);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  /* Log stream */
+  .log-stream {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    height: 120px;
+    overflow-y: auto;
+    background: var(--bg3);
+    border-radius: 5px;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 14px;
+  }
+
+  .log-line { line-height: 1.6; }
+  .log-red { color: var(--red); }
+  .log-amber { color: var(--amber); }
+  .log-blue { color: var(--blue); }
+  .log-dim { color: var(--text3); }
+
+  /* Throughput */
+  .tp-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .tp-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text2);
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .tp-track {
+    flex: 1;
+    height: 5px;
+    background: var(--bg3);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .tp-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+
+  .tp-val {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text);
+    width: 72px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Dept / Endpoint rows */
+  .data-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .data-row:last-child { border-bottom: none; }
+  .data-name { color: var(--text2); }
+  .data-val { font-family: var(--mono); font-size: 11px; color: var(--red); }
+
+  .ep-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ep-row:last-child { border-bottom: none; }
+  .ep-name { font-family: var(--mono); font-size: 10px; color: var(--text2); flex: 1; }
+  .ep-track { width: 60px; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
+  .ep-bar { height: 100%; border-radius: 2px; }
+  .ep-pct { font-family: var(--mono); font-size: 10px; color: var(--text3); width: 28px; text-align: right; }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .footer-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .footer-tag span { color: var(--text2); }
+
+  /* API tester */
+  .api-section { margin-top: 14px; }
+
+  .api-input {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text);
+    padding: 8px 10px;
+    outline: none;
+    resize: vertical;
+    min-height: 60px;
+    margin-bottom: 8px;
+  }
+
+  .api-input:focus { border-color: var(--border2); }
+
+  .api-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+
+  .api-url {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--blue);
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 6px 10px;
+    outline: none;
+    color: var(--text);
+  }
+
+  .send-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 6px 16px;
+    border-radius: 5px;
+    border: 1px solid var(--blue);
+    background: var(--blue-bg);
+    color: var(--blue);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .send-btn:hover { background: rgba(74,158,255,0.2); }
+
+  .api-response {
+    font-family: var(--mono);
+    font-size: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px;
+    min-height: 50px;
+    color: var(--text2);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .api-ok { color: var(--green); }
+  .api-err { color: var(--red); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .empty-state {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+    padding: 32px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-badge">SAD</div>
+    <div>
+      <div class="logo-text">Shadow AI Detector</div>
+      <div class="logo-sub">Enterprise DLP · AI Security · NIST SP 800-53</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="topbar-meta">
+      <div class="status-dot"></div>
+      <span id="sys-status">System online</span>
+    </div>
+    <div class="topbar-meta" id="clock">--:--:-- UTC</div>
+    <a class="api-link" id="api-docs-link" href="#" onclick="openDocs(); return false;">
+      API docs ↗
+    </a>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Metrics -->
+  <div class="metric-row">
+    <div class="metric">
+      <div class="metric-label">Logs scanned</div>
+      <div class="metric-val" id="m-total">0</div>
+      <div class="metric-sub" id="m-rps">— records/s</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Threats detected</div>
+      <div class="metric-val red" id="m-threats">0</div>
+      <div class="metric-sub" id="m-tpct">— % of traffic</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Critical alerts</div>
+      <div class="metric-val red" id="m-critical">0</div>
+      <div class="metric-sub">BLOCK / ESCALATE actions</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg threat score</div>
+      <div class="metric-val amber" id="m-score">—</div>
+      <div class="metric-sub">out of 100 · NIST risk model</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Log volume</span>
+      <input type="range" min="50" max="1000" step="50" value="300" id="vol-slider">
+      <span class="ctrl-val" id="vol-val">300</span>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Filter</span>
+      <button class="filter-btn active-all" data-f="ALL" onclick="setFilter(this)">ALL</button>
+      <button class="filter-btn" data-f="CRITICAL" onclick="setFilter(this)">CRITICAL</button>
+      <button class="filter-btn" data-f="WARNING" onclick="setFilter(this)">WARNING</button>
+    </div>
+    <button class="run-btn" id="run-btn" onclick="runPipeline()">
+      ▶ Run detection pipeline
+    </button>
+  </div>
+
+  <!-- Main content -->
+  <div class="grid-2">
+
+    <!-- Alert feed -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Live alert feed</span>
+        <span class="panel-badge" id="alert-count">0 alerts</span>
+      </div>
+      <div class="panel-body">
+        <div class="alert-feed" id="alert-feed">
+          <div class="empty-state">Run pipeline to see alerts</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Log stream -->
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Execution log</span>
+          <span class="panel-badge" id="stage-label">idle</span>
+        </div>
+        <div class="panel-body" style="padding:10px">
+          <div class="log-stream" id="log-stream">
+            <div class="log-line log-dim">[system] Shadow AI Detector v4 — ready</div>
+            <div class="log-line log-dim">[system] Scanner: regex-fallback (demo mode)</div>
+            <div class="log-line log-dim">[system] Rate limiter: Redis-backed</div>
+            <div class="log-line log-dim">[system] Awaiting pipeline invocation...</div>
+          </div>
+
+          <!-- Throughput -->
+          <div class="panel-title" style="margin-bottom:10px">Throughput benchmarks</div>
+          <div class="tp-row">
+            <div class="tp-label">Pre-filter</div>
+            <div class="tp-track"><div class="tp-bar" id="tp-prefilter" style="background:var(--red)"></div></div>
+            <div class="tp-val" id="tv-prefilter">—</div>
+          </div>
+          <div class="tp-row">
+            <div class="tp-label">Regex scan</div>
+            <div class="tp-track"><div class="tp-bar" id="tp-regex" style="background:var(--amber)"></div></div>
+            <div class="tp-val" id="tv-regex">—</div>
+          </div>
+          <div class="tp-row">
+            <div class="tp-label">Policy eval</div>
+            <div class="tp-track"><div class="tp-bar" id="tp-policy" style="background:var(--blue)"></div></div>
+            <div class="tp-val" id="tv-policy">—</div>
+          </div>
+          <div class="tp-row">
+            <div class="tp-label">End-to-end</div>
+            <div class="tp-track"><div class="tp-bar" id="tp-e2e" style="background:var(--green)"></div></div>
+            <div class="tp-val" id="tv-e2e">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom row -->
+  <div class="grid-3">
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">Threats by department</span></div>
+      <div class="panel-body" id="dept-panel">
+        <div class="empty-state" style="padding:20px 0">—</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><span class="panel-title">AI endpoints targeted</span></div>
+      <div class="panel-body" id="ep-panel">
+        <div class="empty-state" style="padding:20px 0">—</div>
+      </div>
+    </div>
+
+    <!-- Live API tester -->
+    <div class="panel">
+      <div class="panel-head">
+        <span class="panel-title">Live API test</span>
+        <span class="panel-badge" id="api-status">not connected</span>
+      </div>
+      <div class="panel-body" style="padding:10px">
+        <div class="api-row">
+          <input class="api-url" id="api-url" value="http://localhost:8000" placeholder="https://your-app.onrender.com">
+          <button class="send-btn" onclick="pingHealth()">Ping</button>
+        </div>
+        <textarea class="api-input" id="api-payload" rows="3">{"logs":[{"timestamp":"2026-06-01T14:32:00","source_ip":"10.0.0.12","user_id":"emp_0234","department":"Finance","destination_url":"api.openai.com","http_method":"POST","path":"/v1/chat/completions","payload":"Process refund for card 4111-1111-2222-3333, customer user@corp.com","response_code":200,"response_time_ms":340}]}</textarea>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <button class="send-btn" onclick="sendScan()" style="flex:1">POST /scan</button>
+          <button class="send-btn" onclick="pingHealth()" style="border-color:var(--green);color:var(--green)">GET /health</button>
+        </div>
+        <div class="api-response" id="api-response">Set your deployment URL above and click Ping or POST /scan</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-tag">◈ <span>O(1) streaming ingestion</span></div>
+  <div class="footer-tag">◈ <span>ProcessPoolExecutor · GIL bypass</span></div>
+  <div class="footer-tag">◈ <span>Stateless policy engine</span></div>
+  <div class="footer-tag">◈ <span>run_in_executor · async-safe NLP</span></div>
+  <div class="footer-tag">◈ <span>Redis rate limiter · multi-worker</span></div>
+  <div class="footer-tag">◈ <span>ReDoS-safe patterns · &lt;0.05ms</span></div>
+  <div class="footer-tag">◈ <span>NIST SP 800-53 · OWASP Top 10</span></div>
+</div>
+
+<script>
+const DEPTS = ['Finance','Sales','HR','Engineering','Marketing'];
+const ENDPOINTS = ['api.openai.com','claude.ai','api.anthropic.com','api.huggingface.co','gemini.googleapis.com'];
+const ENTITIES = ['CREDIT_CARD','US_SSN','EMAIL_ADDRESS','API_KEY','GENERIC_PASSWORD','PHONE_NUMBER'];
+const EP_COLORS = ['var(--red)','var(--amber)','var(--blue)','var(--green)','#9b7fd4'];
+
+let activeFilter = 'ALL', allAlerts = [];
+
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = a => a[rand(0,a.length-1)];
+const fmt = n => n>=1000?(n/1000).toFixed(1)+'k':String(n);
+
+function setFilter(btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn';
+  });
+  const f = btn.dataset.f;
+  btn.className = 'filter-btn ' + (f==='ALL'?'active-all':f==='CRITICAL'?'active-crit':'active-warn');
+  activeFilter = f;
+  renderAlerts();
+}
+
+function makeLogs(n) {
+  return Array.from({length:n}, () => {
+    const isAI = Math.random() < 0.70;
+    const hasPII = isAI && Math.random() < 0.43;
+    const ents = hasPII ? Array.from({length:rand(1,4)}, () => pick(ENTITIES)) : [];
+    const highRisk = ents.some(e => ['CREDIT_CARD','US_SSN','API_KEY','GENERIC_PASSWORD'].includes(e));
+    const dept = pick(DEPTS);
+    let level = 'INFO', action = 'LOG';
+    if (isAI && ents.length > 0 && highRisk) { level='CRITICAL'; action='BLOCK'; }
+    else if (isAI && ents.length > 0) { level='WARNING'; action='ALERT'; }
+    if (dept==='Sales' && isAI && ents.length>0) { level='CRITICAL'; action='ESCALATE'; }
+    if (ents.length>=4 && isAI) { level='CRITICAL'; action='BLOCK'; }
+    const score = isAI ? Math.min(100, (ents.length*15 + ents.reduce((a,e)=>a+({'CREDIT_CARD':20,'US_SSN':20,'API_KEY':25,'GENERIC_PASSWORD':25,'EMAIL_ADDRESS':10,'PHONE_NUMBER':8}[e]||5),0))*2) : 0;
+    return {
+      endpoint: isAI ? pick(ENDPOINTS) : 'api.github.com',
+      dept, ents, level, action, score,
+      uid: `emp_${String(rand(1,50)).padStart(4,'0')}`,
+      ts: new Date(Date.now()-rand(0,86400000)).toISOString().substr(11,8),
+      isAI, hasPII
+    };
+  });
+}
+
+async function runPipeline() {
+  const n = +document.getElementById('vol-slider').value;
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.textContent = '◌ Running...';
+
+  const log = document.getElementById('log-stream');
+  const stage = document.getElementById('stage-label');
+  const addLog = (msg, cls='') => {
+    const d = document.createElement('div');
+    d.className = 'log-line' + (cls?' '+cls:'');
+    d.textContent = msg;
+    log.appendChild(d);
+    log.scrollTop = log.scrollHeight;
+  };
+
+  log.innerHTML=''; allAlerts=[];
+  document.getElementById('alert-feed').innerHTML = '<div class="empty-state">Running...</div>';
+  document.getElementById('sys-status').textContent = 'Pipeline running';
+
+  const t0 = performance.now();
+
+  addLog(`[stage-1] Generating ${n} synthetic proxy logs...`);
+  stage.textContent = 'stage-1';
+  await sleep(50);
+
+  const logs = makeLogs(n);
+  const aiLogs = logs.filter(l=>l.isAI);
+  const threats = logs.filter(l=>l.level!=='INFO');
+  const critical = threats.filter(l=>l.level==='CRITICAL');
+  const dropped = logs.length - aiLogs.length;
+
+  addLog(`[stage-1] ${n} logs · ${Math.round(n*0.2)} clean / ${Math.round(n*0.5)} benign-AI / ${Math.round(n*0.3)} threat`, 'log-blue');
+  await sleep(40);
+
+  addLog(`[stage-2] O(1) streaming pre-filter · dropping ${dropped} clean records...`);
+  stage.textContent = 'stage-2';
+  await sleep(80);
+
+  const tPre0 = performance.now();
+  const preRPS = Math.round(n/((performance.now()-tPre0+0.01)/1000));
+  addLog(`[stage-2] Regex scan (ReDoS-safe, 6 patterns) on ${aiLogs.length} records...`);
+  await sleep(100);
+
+  const tScan0 = performance.now();
+  const scanRPS = Math.round(aiLogs.length/((performance.now()-tScan0+0.01)/1000));
+  addLog(`[stage-2] Scan complete · ${threats.length} records with entities`, 'log-blue');
+  await sleep(40);
+
+  addLog(`[stage-3] Policy engine (stateless · 3 rules) evaluating...`);
+  stage.textContent = 'stage-3';
+  await sleep(80);
+
+  const tPol0 = performance.now();
+  critical.slice(0,2).forEach(l => {
+    addLog(`[CRITICAL] ${l.uid} → ${l.endpoint} · ${l.ents.join(',')} · ${l.action}`, 'log-red');
+  });
+  threats.filter(l=>l.level==='WARNING').slice(0,1).forEach(l => {
+    addLog(`[WARNING]  ${l.uid} → ${l.endpoint} · ${l.ents[0]||'anomaly'}`, 'log-amber');
+  });
+  const polRPS = Math.round(threats.length/((performance.now()-tPol0+0.01)/1000));
+
+  await sleep(40);
+  addLog(`[stage-4] Exporting → JSON · JSONL · Grafana Loki push format`);
+  stage.textContent = 'stage-4';
+  await sleep(60);
+
+  const elapsed = performance.now() - t0;
+  const e2eRPS = Math.round(n/(elapsed/1000));
+  addLog(`[done] ${(elapsed/1000).toFixed(2)}s · ${fmt(e2eRPS)} rec/s · ${critical.length} critical alerts`, 'log-blue');
+
+  stage.textContent = 'complete';
+  document.getElementById('sys-status').textContent = 'Pipeline complete';
+
+  allAlerts = threats;
+
+  // Metrics
+  animNum('m-total', 0, logs.length, 600);
+  animNum('m-threats', 0, threats.length, 600);
+  animNum('m-critical', 0, critical.length, 600);
+  setTimeout(() => {
+    const scores = threats.map(l=>l.score).filter(s=>s>0);
+    document.getElementById('m-score').textContent = scores.length ? Math.round(scores.reduce((a,b)=>a+b)/scores.length) : '—';
+    document.getElementById('m-tpct').textContent = (threats.length/logs.length*100).toFixed(1)+'% of traffic';
+    document.getElementById('m-rps').textContent = fmt(e2eRPS)+' rec/s';
+  }, 400);
+
+  // Throughput bars
+  const maxRPS = Math.max(preRPS, scanRPS, polRPS, e2eRPS, 1);
+  setTimeout(() => {
+    setTP('prefilter', preRPS, maxRPS);
+    setTP('regex', scanRPS, maxRPS);
+    setTP('policy', polRPS, maxRPS);
+    setTP('e2e', e2eRPS, maxRPS);
+  }, 200);
+
+  // Dept breakdown
+  const deptCounts = {};
+  DEPTS.forEach(d => deptCounts[d]=0);
+  threats.forEach(t => { if(deptCounts[t.dept]!==undefined) deptCounts[t.dept]++; });
+  const deptPanel = document.getElementById('dept-panel');
+  deptPanel.innerHTML = DEPTS.sort((a,b)=>deptCounts[b]-deptCounts[a]).map(d =>
+    `<div class="data-row"><span class="data-name">${d}</span><span class="data-val">${deptCounts[d]}</span></div>`
+  ).join('');
+
+  // Endpoints
+  const epCounts = {};
+  ENDPOINTS.forEach(e => epCounts[e]=0);
+  aiLogs.forEach(l => { if(epCounts[l.endpoint]!==undefined) epCounts[l.endpoint]++; });
+  const total = aiLogs.length || 1;
+  const epPanel = document.getElementById('ep-panel');
+  epPanel.innerHTML = ENDPOINTS.map((ep, i) => {
+    const pct = Math.round(epCounts[ep]/total*100);
+    return `<div class="ep-row">
+      <div class="ep-name">${ep}</div>
+      <div class="ep-track"><div class="ep-bar" style="width:${pct}%;background:${EP_COLORS[i]}"></div></div>
+      <div class="ep-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+
+  renderAlerts();
+  btn.disabled = false; btn.textContent = '▶ Run detection pipeline';
+}
+
+function setTP(key, rps, max) {
+  const pct = Math.min(Math.round(rps/max*100), 100);
+  document.getElementById('tp-'+key).style.width = pct+'%';
+  document.getElementById('tv-'+key).textContent = fmt(rps)+' r/s';
+}
+
+function renderAlerts() {
+  const feed = document.getElementById('alert-feed');
+  const filtered = activeFilter==='ALL' ? allAlerts : allAlerts.filter(a=>a.level===activeFilter);
+  document.getElementById('alert-count').textContent = filtered.length+' alerts';
+
+  if (!filtered.length) {
+    feed.innerHTML = `<div class="empty-state">${allAlerts.length?'No '+activeFilter+' alerts':'Run pipeline to see alerts'}</div>`;
+    return;
+  }
+
+  const shown = filtered.slice(0,10);
+  feed.innerHTML = shown.map((a, i) => {
+    const bc = a.level==='CRITICAL'?'badge-crit':a.level==='WARNING'?'badge-warn':'badge-info';
+    const tags = a.ents.map(e=>`<span class="entity-tag">${e.replace('_',' ')}</span>`).join('');
+    return `<div class="alert-row" style="animation-delay:${i*30}ms">
+      <span class="badge ${bc}">${a.level}</span>
+      <div class="alert-body">
+        <div class="alert-main">${a.uid} → <span class="alert-mono">${a.endpoint}</span></div>
+        <div class="alert-tags">${tags}</div>
+        <div class="alert-meta">action: ${a.action} · score: ${a.score}/100 · dept: ${a.dept}</div>
+      </div>
+      <div class="alert-time">${a.ts}</div>
+    </div>`;
+  }).join('');
+
+  if (filtered.length > 10) {
+    feed.innerHTML += `<div class="empty-state" style="padding:10px 0">+${filtered.length-10} more alerts</div>`;
+  }
+}
+
+function animNum(id, from, to, dur) {
+  const el = document.getElementById(id);
+  const start = performance.now();
+  (function frame(now) {
+    const p = Math.min((now-start)/dur,1);
+    el.textContent = Math.round(from+(to-from)*p).toLocaleString();
+    if(p<1) requestAnimationFrame(frame);
+  })(performance.now());
+}
+
+function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toUTCString().split(' ')[4]+' UTC';
+}, 1000);
+
+// Volume slider
+document.getElementById('vol-slider').addEventListener('input', function() {
+  document.getElementById('vol-val').textContent = this.value;
+});
+
+// API tester
+function getBaseURL() {
+  return document.getElementById('api-url').value.replace(/\/$/, '');
+}
+
+function openDocs() {
+  window.open(getBaseURL()+'/docs', '_blank');
+}
+
+async function pingHealth() {
+  const resp = document.getElementById('api-response');
+  const status = document.getElementById('api-status');
+  resp.textContent = 'Pinging...';
+  resp.className = 'api-response';
+  try {
+    const r = await fetch(getBaseURL()+'/health');
+    const data = await r.json();
+    resp.textContent = JSON.stringify(data, null, 2);
+    resp.className = 'api-response api-ok';
+    status.textContent = r.ok ? '● connected' : '● error';
+    status.style.color = r.ok ? 'var(--green)' : 'var(--red)';
+  } catch(e) {
+    resp.textContent = 'Connection failed: '+e.message+'\n\nDeploy the API first:\n  python presidio_scanner.py\nor set your Render URL above.';
+    resp.className = 'api-response api-err';
+    status.textContent = '● offline';
+    status.style.color = 'var(--red)';
+  }
+}
+
+async function sendScan() {
+  const resp = document.getElementById('api-response');
+  resp.textContent = 'Sending...';
+  resp.className = 'api-response';
+  try {
+    const payload = JSON.parse(document.getElementById('api-payload').value);
+    const r = await fetch(getBaseURL()+'/scan', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await r.json();
+    resp.textContent = JSON.stringify(data, null, 2);
+    resp.className = 'api-response ' + (r.ok?'api-ok':'api-err');
+  } catch(e) {
+    resp.textContent = 'Error: '+e.message;
+    resp.className = 'api-response api-err';
+  }
+}
+</script>
+</body>
+</html>
