@@ -1,0 +1,54 @@
+name: CI — Shadow AI Detector
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pydantic fastapi uvicorn rich redis pytest pytest-asyncio httpx
+
+      - name: Run test suite
+        run: pytest tests/ -v --tb=short
+
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check . --select E,F,W --ignore E501 || true
+
+  security-scan:
+    name: Dependency security scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit dependencies
+        run: pip-audit -r requirements.txt --ignore-vuln GHSA-jfh8-c2jp-j6bz || true
