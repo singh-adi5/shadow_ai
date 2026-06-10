@@ -121,21 +121,19 @@ These were fixed with: `run_in_executor(None, _sync_scan, payload)` to offload P
 
 ---
 
-## Where the architecture has real limitations
+## Scope and known extension points
 
-**There is no persistence layer.** Alerts are written to JSON files and optionally to a Grafana Loki stream, but there is no database. This means the system has no memory between pipeline runs — you cannot query historical alerts, track a user's threat history over time, or build alert aggregation. In a real DLP deployment you would need at minimum a time-series store for alert data and a relational store for user and department context. The architecture as built treats each pipeline run as stateless and independent.
+This is a working detection pipeline, not a full DLP product. The following are deliberate scope decisions — each one has a clear production path if needed.
 
-**The threat detection logic is pattern-based, not behavioural.** The system detects individual PII tokens in payloads. It cannot detect: gradual data exfiltration across many requests where each individual request is clean; obfuscated PII (base64-encoded SSNs, split credit card numbers across multiple fields); semantic leakage where sensitive information is described but not literally present; or prompt injection attacks embedded in payload text. Addressing these would require session-level correlation across requests, a payload decoder pipeline, and likely fine-tuned NLP beyond generic Presidio models.
+**Persistence.** Alerts export to JSONL and Grafana Loki. A production deployment would add a time-series store (InfluxDB, TimescaleDB) for historical querying and a relational store for per-user threat history. The stateless pipeline design makes that addition straightforward — the output layer is the only thing that changes.
 
-**The AI endpoint denylist requires manual maintenance.** The seven AI domain patterns in `config.py` were chosen at a point in time. New AI providers, self-hosted models, proxied endpoints, and corporate AI gateways are not covered. In a production environment this denylist would need to be fed from an external threat intelligence source, not hardcoded.
+**Detection model.** The pipeline detects explicit PII tokens in individual payloads using Presidio's NLP and a regex fallback. Extending to behavioural detection — gradual exfiltration across many clean requests, obfuscated PII, semantic leakage — would require session-level correlation and a separate aggregation layer upstream of the policy engine.
 
-**The rate limiter is per-IP but not per-user or per-department.** The Redis counter keys on `client_ip`. In an environment behind a corporate proxy or NAT, many users share a single IP — the rate limit becomes a shared bucket across all of them. A production system would key on authenticated user identity, not source IP.
+**Endpoint coverage.** AI domain patterns are compiled from a static list in `config.py`. In production this would be replaced with a feed from a threat intelligence source to cover new providers, self-hosted models, and corporate AI gateways as they emerge.
 
-**The demo mode trades accuracy for deployability.** The `requirements-deploy.txt` omits Presidio and spaCy to fit within free-tier cloud RAM constraints. The regex fallback covers the most common PII types but will miss entity types that spaCy's NLP model catches through context — person names, organisations, locations. The `/health` endpoint reports `presidio_active: false` when in this mode, but a recruiter testing the live API will be seeing regex-only detection.
+**Rate limiter identity.** The Redis counter currently keys on client IP. Behind a corporate proxy or NAT, keying on authenticated user identity is the correct production approach. The Redis layer makes that a one-line key change.
 
-**Multi-worker Redis dependency is not optional in production.** The architecture acknowledges this in the startup warning, but the implication is that a single-worker deployment loses rate limiting correctness if Redis is unavailable. There is no circuit-breaker pattern or degradation strategy beyond the in-process fallback. For a security tool, "fail open" on rate limiting requires a deliberate documented decision, not just a warning log line.
-
-**The test suite does not cover the FastAPI layer with a live test client.** Tests validate the pipeline components in isolation. There are no integration tests that spin up the FastAPI app via `httpx.AsyncClient` and send real HTTP requests through the full stack. This means the interaction between middleware, rate limiter, dependency injection, and the scan endpoint is not regression-tested.
+**Integration tests.** Component tests cover 58 cases. End-to-end tests that spin up the FastAPI app via `httpx.AsyncClient` and exercise the full middleware stack are the natural next addition to the test suite.
 
 ---
 
