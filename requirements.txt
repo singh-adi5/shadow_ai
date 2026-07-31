@@ -1,6 +1,15 @@
-# Shadow AI Detector — Python Dependencies
-# All packages verified against PyPI (May 2026).
-# Pinned to minor version for reproducibility; patch updates are safe.
+# Shadow AI Detector — Full Python Dependencies (incl. Presidio/spaCy NLP)
+#
+# presidio-analyzer / presidio-anonymizer / spacy are 2024-era pins whose
+# build chain (thinc -> blis -> Cython) can break against whatever numpy
+# PyPI resolves today, forcing a source build that may fail depending on
+# your platform/toolchain (this has been observed on both Windows+recent-
+# Python and in CI). If `pip install -r requirements.txt` fails on this
+# chain, use requirements-deploy.txt instead — the app runs fully
+# functional on the regex fallback without Presidio/spaCy at all (see
+# SECURITY.md "PII Detection Coverage"). CI's blocking test gate uses
+# requirements-deploy.txt for exactly this reason; this full file is
+# covered by CI's advisory (non-blocking) job only.
 #
 # Install:
 #   pip install -r requirements.txt
