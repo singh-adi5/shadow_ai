@@ -1,0 +1,19 @@
+# Shadow AI Detector — Lean Deployment Dependencies
+# ====================================================
+# Everything in requirements.txt EXCEPT presidio-analyzer / presidio-anonymizer
+# / spacy (regex fallback active — see SECURITY.md "PII Detection Coverage")
+# and the pytest/httpx testing deps (not needed at runtime). This is what
+# the Dockerfile installs by default — a fast build with no ~600MB spaCy
+# model download, appropriate for a free/starter-tier deploy.
+#
+# To enable full Presidio ML detection instead, build with
+# --build-arg ENABLE_PRESIDIO_MODEL=true (see Dockerfile / DEPLOYMENT.md),
+# which installs the full requirements.txt plus the spaCy language model.
+
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.1
+rich==13.7.1
+cryptography==42.0.7
+python-json-logger==2.0.7
+python-dotenv==1.0.1

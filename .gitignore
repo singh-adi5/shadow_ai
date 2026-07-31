@@ -1,0 +1,27 @@
+# Secrets — never commit real keys. SHADOW_AI_API_KEY / TRUSTED_PROXIES etc.
+# are loaded from .env via python-dotenv; only .env.example belongs in git.
+.env
+*.env
+!.env.example
+
+# Runtime-generated artefacts
+audit.log
+alerts.jsonl
+threat_model_output/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+
+# Virtual environments
+.venv/
+.venv_*/
+venv/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

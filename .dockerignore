@@ -1,0 +1,17 @@
+.git/
+.github/
+.venv/
+.venv_*/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+*.md
+.env
+*.env
+!.env.example
+audit.log
+alerts.jsonl
+threat_model_output/
+{threat_model_output,tests}/

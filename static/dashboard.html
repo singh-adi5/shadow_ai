@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shadow AI Detector — Live Dashboard</title>
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="topbar-title">
+        <h1>🛰️ Shadow AI Detector</h1>
+        <p class="subtitle">Live Shadow AI / DLP incident dashboard</p>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-status" id="status-pills" aria-live="polite"></div>
+        <button id="btn-apikey" class="btn btn-ghost btn-small" title="Set API key for status updates">🔑 API key</button>
+      </div>
+    </header>
+
+    <div class="apikey-box" id="apikey-box" hidden>
+      <label for="apikey-input">X-API-Key (stored only in this browser, used to update alert status)</label>
+      <div class="apikey-row">
+        <input type="password" id="apikey-input" autocomplete="off" placeholder="paste your SHADOW_AI_API_KEY" />
+        <button id="btn-apikey-save" class="btn btn-primary btn-small">Save</button>
+        <button id="btn-apikey-clear" class="btn btn-ghost btn-small">Clear</button>
+      </div>
+    </div>
+
+    <section class="controls" aria-label="Demo traffic controls">
+      <div class="controls-group">
+        <label for="sim-count">Demo logs</label>
+        <select id="sim-count">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="250">250</option>
+        </select>
+        <button id="btn-simulate" class="btn btn-primary">Generate Demo Traffic</button>
+      </div>
+      <div class="controls-group">
+        <label for="auto-refresh">
+          <input type="checkbox" id="auto-refresh" checked />
+          Auto-refresh
+        </label>
+        <button id="btn-refresh" class="btn btn-ghost">Refresh now</button>
+      </div>
+    </section>
+
+    <section class="filter-bar panel" aria-label="Filters">
+      <div class="filter-groups" id="filter-groups"></div>
+      <div class="filter-search-row">
+        <input type="search" id="search-input" placeholder="Search user, department, destination, message…" aria-label="Search alerts" />
+        <select id="sort-select" aria-label="Sort by">
+          <option value="time_desc">Newest first</option>
+          <option value="time_asc">Oldest first</option>
+          <option value="score_desc">Highest score</option>
+          <option value="severity">Severity</option>
+        </select>
+        <button id="btn-clear-filters" class="btn btn-ghost btn-small">Clear filters</button>
+      </div>
+    </section>
+
+    <section class="stat-tiles" id="stat-tiles" aria-label="Summary totals"></section>
+
+    <section class="chart-grid">
+      <div class="panel">
+        <h2>Alerts by severity <span class="panel-hint">(filtered view)</span></h2>
+        <div id="severity-list" class="severity-list" role="list"></div>
+      </div>
+      <div class="panel">
+        <h2>Entity types detected</h2>
+        <div class="chart-wrap"><canvas id="chart-entities"></canvas></div>
+      </div>
+      <div class="panel">
+        <h2>Alerts by department</h2>
+        <div class="chart-wrap"><canvas id="chart-departments"></canvas></div>
+      </div>
+    </section>
+
+    <section class="panel table-panel">
+      <div class="table-panel-header">
+        <h2>Alerts <span id="table-count-label" class="panel-hint"></span></h2>
+      </div>
+      <div class="table-scroll">
+        <table id="alerts-table">
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Severity</th>
+              <th>Time (UTC)</th>
+              <th>User / Dept</th>
+              <th>Destination</th>
+              <th>Entities</th>
+              <th>Score</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-tbody"></tbody>
+        </table>
+      </div>
+      <p class="empty-state" id="alerts-empty" hidden>No alerts match the current filters.</p>
+      <div class="pagination" id="pagination"></div>
+    </section>
+
+    <footer class="page-footer">
+      <p>
+        Synthetic demo data only — no real PII is ever displayed. Entity values are always
+        redacted at the source. See <a href="/docs">API docs</a> — full security model in
+        this repository's SECURITY.md.
+      </p>
+    </footer>
+  </div>
+
+  <div class="overlay" id="detail-overlay" hidden></div>
+  <aside class="detail-panel" id="detail-panel" hidden aria-label="Alert detail" role="dialog" aria-modal="true">
+    <div class="detail-header">
+      <h2 id="detail-title">Alert</h2>
+      <button id="detail-close" class="btn btn-ghost btn-small" aria-label="Close">✕</button>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </aside>
+
+  <script src="/static/chart.min.js"></script>
+  <script src="/static/dashboard.js"></script>
+</body>
+</html>

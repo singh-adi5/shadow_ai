@@ -1,0 +1,43 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Connect this repo at https://dashboard.render.com/blueprints and Render
+# will read this file automatically. See DEPLOYMENT.md for the full
+# click-through walkthrough.
+
+services:
+  - type: web
+    name: shadow-ai-detector
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Container must bind 0.0.0.0; PORT is injected by Render at runtime
+      # and read via config.py's API_PORT.
+      - key: API_HOST
+        value: 0.0.0.0
+
+      # Random 32-byte hex secret, generated once at first deploy and
+      # persisted by Render — never committed to the repo. Required to
+      # authenticate to /scan and /scan-file (X-API-Key header); /dashboard
+      # and /health stay open. See SECURITY.md.
+      - key: SHADOW_AI_API_KEY
+        generateValue: true
+
+      # Render's container is only reachable through Render's own edge
+      # proxy — there is no direct path from the internet to the
+      # container — so trusting X-Forwarded-For unconditionally here does
+      # not reopen the spoofing bypass TRUSTED_PROXIES exists to close.
+      # See SECURITY.md "Trusted proxies" before reusing this value on a
+      # different platform.
+      - key: TRUSTED_PROXIES
+        value: "*"
+
+      # Single instance on the free plan: no multi-worker rate-limiter
+      # bypass is possible, so the in-process fallback (no Redis) is
+      # correct here. Add a Redis/Key-Value service and set
+      # RATE_LIMIT_BACKEND if you scale to > 1 instance.
+      - key: API_WORKERS
+        value: "1"
