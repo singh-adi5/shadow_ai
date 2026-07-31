@@ -1,15 +1,20 @@
 # Shadow AI Detector — Full Python Dependencies (incl. Presidio/spaCy NLP)
 #
-# presidio-analyzer / presidio-anonymizer / spacy are 2024-era pins whose
-# build chain (thinc -> blis -> Cython) can break against whatever numpy
-# PyPI resolves today, forcing a source build that may fail depending on
-# your platform/toolchain (this has been observed on both Windows+recent-
-# Python and in CI). If `pip install -r requirements.txt` fails on this
-# chain, use requirements-deploy.txt instead — the app runs fully
-# functional on the regex fallback without Presidio/spaCy at all (see
-# SECURITY.md "PII Detection Coverage"). CI's blocking test gate uses
-# requirements-deploy.txt for exactly this reason; this full file is
-# covered by CI's advisory (non-blocking) job only.
+# spacy is pinned to 3.7.5, not 3.7.4: fastapi==0.111.0 hard-depends on
+# fastapi-cli, which requires typer>=0.12.3; spacy==3.7.4 pins
+# typer<0.10.0 directly — those two floors never overlap, so installing
+# both together is ResolutionImpossible, not a build/platform issue.
+# spacy==3.7.5 relaxed its pin to typer<1.0.0 (and its weasel dependency
+# to a version with the same relaxed range), which overlaps cleanly with
+# fastapi-cli's floor. Verified via `pip install --dry-run --only-binary
+# :all: --python-version {3.11,3.12} --platform manylinux2014_x86_64` —
+# resolves clean on both, installing typer==0.24.2.
+#
+# If you still hit resolution/build issues in a different environment,
+# use requirements-deploy.txt instead — the app runs fully functional on
+# the regex fallback without Presidio/spaCy at all (see SECURITY.md "PII
+# Detection Coverage"). CI runs both: requirements-deploy.txt is the
+# blocking gate, this full file gets an advisory (non-blocking) job.
 #
 # Install:
 #   pip install -r requirements.txt
@@ -27,7 +32,7 @@ pydantic==2.7.1
 # ── PII Detection (Microsoft Presidio) ───────────────────────────────────────
 presidio-analyzer==2.2.354
 presidio-anonymizer==2.2.354
-spacy==3.7.4                        # NLP engine used by Presidio
+spacy==3.7.5                        # NLP engine used by Presidio — see header note re: typer conflict
 
 # ── Terminal Output ───────────────────────────────────────────────────────────
 rich==13.7.1

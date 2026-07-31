@@ -9,14 +9,13 @@ on:
 jobs:
   # Primary, blocking test gate. Installs requirements-deploy.txt (no
   # presidio-analyzer/spacy) + the test-only packages — this is exactly
-  # what was used to validate the whole suite throughout development.
-  # requirements.txt's presidio-analyzer==2.2.354 / spacy==3.7.4 pins are
-  # 2024-era releases whose build chain (thinc -> blis -> Cython) breaks
-  # against whatever numpy PyPI serves today, forcing a source build that
-  # fails — the exact thing that broke this job before this fix. The app
-  # is designed to run fully on the regex fallback without spaCy/Presidio
-  # at all (see SECURITY.md "PII Detection Coverage"); the 2 tests that
-  # need Presidio itself installed skip cleanly via pytest.importorskip.
+  # what was used to validate the whole suite throughout development, and
+  # avoids depending on the full requirements.txt's much larger transitive
+  # dependency tree (see requirements.txt header + test-full-nlp below) in
+  # the path that gates merges. The app is designed to run fully on the
+  # regex fallback without spaCy/Presidio at all (see SECURITY.md "PII
+  # Detection Coverage"); the 2 tests that need Presidio itself installed
+  # skip cleanly via pytest.importorskip.
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
@@ -42,9 +41,11 @@ jobs:
       - name: Run test suite
         run: pytest tests/ -v --tb=short
 
-  # Best-effort coverage of the full Presidio/spaCy NLP path. Non-blocking
-  # (continue-on-error) since requirements.txt's pins are the fragile ones
-  # described above — this job succeeding is a bonus signal, not a gate.
+  # Coverage of the full Presidio/spaCy NLP path (requirements.txt — see
+  # its header for the fastapi-cli/typer pin fix this depends on).
+  # continue-on-error stays on as a safety net: this dependency tree is
+  # inherently more exposed to future upstream pin drift than the lean
+  # path above, which is the one that actually gates merges.
   test-full-nlp:
     name: Test (full Presidio/spaCy stack — advisory)
     runs-on: ubuntu-latest
