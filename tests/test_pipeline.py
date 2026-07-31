@@ -319,7 +319,25 @@ class TestTelemetryGenerator:
 
     def test_fake_credit_card_is_test_data(self):
         cc = _fake_credit_card()
-        assert cc.startswith("4111"), "Test credit cards must use Luhn-invalid 4111 prefix"
+        assert cc.startswith("4111"), "Test credit cards must use the reserved 4111 VISA test prefix"
+
+    def test_fake_credit_card_is_luhn_valid(self):
+        """Presidio's built-in CREDIT_CARD recognizer validates the Luhn
+        checksum — an invalid one is silently never detected under real
+        Presidio (only the regex fallback, which skips the checksum, would
+        flag it), which would make the demo/dashboard traffic generator
+        never show credit-card detections once Presidio is active."""
+        cc = _fake_credit_card()
+        digits = cc.replace("-", "")
+        total = 0
+        for i, ch in enumerate(reversed(digits)):
+            d = int(ch)
+            if i % 2 == 1:
+                d *= 2
+                if d > 9:
+                    d -= 9
+            total += d
+        assert total % 10 == 0, f"{cc} is not Luhn-valid"
 
     def test_fake_ssn_format(self):
         import re
@@ -520,7 +538,7 @@ class TestFix1AsyncNonBlocking:
 
         async def _run():
             payloads = [
-                "card 4111-1111-2222-3333",
+                "card 4111-1111-1111-1111",  # Luhn-valid — Presidio's CREDIT_CARD recognizer checks the checksum
                 "email user@corp.com",
                 "SSN 123-45-6789",
                 "normal text query",
@@ -538,7 +556,11 @@ class TestFix1AsyncNonBlocking:
         from presidio_scanner import scan_payload_async
 
         async def _run():
-            return await scan_payload_async("process card 4111-1111-2222-3333")
+            # Luhn-valid — Presidio's built-in CREDIT_CARD recognizer
+            # validates the checksum (the regex fallback doesn't), so a
+            # random/invalid suffix is silently never detected once real
+            # Presidio is active. See telemetry_generator._fake_credit_card.
+            return await scan_payload_async("process card 4111-1111-1111-1111")
 
         result = _asyncio.run(_run())
         entity_types = [e["entity_type"] for e in result]
@@ -656,7 +678,11 @@ class TestScanStreamBackpressureFix:
                 "department": "Finance",
                 "source_ip": "10.0.0.1",
                 "timestamp": "2026-01-01T00:00:00",
-                "payload": f"card 4111-1111-2222-{1000 + i}",
+                # Luhn-valid — Presidio's CREDIT_CARD recognizer checks the
+                # checksum; a per-i random suffix would be invalid and
+                # silently undetected under real Presidio (regex fallback
+                # doesn't check it, which is what masked this before).
+                "payload": "card 4111-1111-1111-1111",
             }
             for i in range(20)
         ]

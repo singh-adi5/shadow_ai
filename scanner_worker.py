@@ -3,18 +3,11 @@ Shadow AI Detector — Multiprocessing Scanner Worker Pool
 =========================================================
 NIST SP 800-53: SI-4 (System Monitoring), SC-5 (Denial of Service Protection)
 
-Addresses Gap 2 from architecture review:
-  ❌ BEFORE: Sequential for-loop over payloads — one CPU core, GIL-bound,
-             blocks entirely on every Presidio NLP inference call.
-             Throughput ceiling: ~10-50 logs/s on a single core.
-
-  ✅ AFTER:  ProcessPoolExecutor — each worker is a separate OS process,
+ProcessPoolExecutor — each worker is a separate OS process,
              bypassing the GIL completely. Presidio's spaCy models run
              in parallel across all available CPU cores.
              Throughput scales linearly with core count.
-
-Addresses Gap 3 (thread safety / state mutation):
-  ✅ Workers are pure functions — no shared mutable state whatsoever.
+Workers are pure functions — no shared mutable state whatsoever.
      Each OS process has its own memory space (no dict race conditions).
      The Presidio AnalyzerEngine is initialised ONCE per worker process
      via the pool initialiser — not recreated per record (expensive).
@@ -79,6 +72,18 @@ def _worker_init() -> None:
         logger.warning(
             "[Worker PID=%d] spaCy language model unavailable (%s) — regex fallback active. "
             "Run: python -m spacy download en_core_web_lg", pid, exc,
+        )
+        _worker_analyzer = None
+    except SystemExit as exc:
+        # A completely invalid PRESIDIO_SPACY_MODEL name (not just "not
+        # downloaded yet") makes spaCy's own download-CLI call sys.exit()
+        # internally rather than raising a normal exception — confirmed by
+        # direct reproduction. Caught here so a config typo degrades to the
+        # regex fallback instead of killing the worker process outright.
+        logger.warning(
+            "[Worker PID=%d] Presidio init aborted via SystemExit (%s) — "
+            "check PRESIDIO_SPACY_MODEL is a real, installed model name. "
+            "Regex fallback active.", pid, exc,
         )
         _worker_analyzer = None
 

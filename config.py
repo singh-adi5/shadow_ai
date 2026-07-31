@@ -230,6 +230,18 @@ class SecurityConfig:
         "DASHBOARD_DB_PATH", "./threat_model_output/dashboard.db"
     ))
 
+    # spaCy model Presidio's AnalyzerEngine loads. presidio_recognizers.py
+    # passes this explicitly via NlpEngineProvider — AnalyzerEngine() with
+    # NO explicit config defaults to en_core_web_lg internally regardless
+    # of what's actually installed, and (confirmed locally) will silently
+    # auto-download the ~400MB model on first use rather than raising
+    # OSError, if the process has network access. Override to
+    # en_core_web_sm for CI / lighter deployments, matching whatever
+    # model was actually downloaded.
+    PRESIDIO_SPACY_MODEL: str = field(default_factory=lambda: os.environ.get(
+        "PRESIDIO_SPACY_MODEL", "en_core_web_lg"
+    ))
+
     # Data Minimisation (GDPR / OWASP)
     STORE_ORIGINAL_DATA: bool = False    # Never persist raw PII
     LOG_SENSITIVE_VALUES: bool = False   # Never write actual PII to logs

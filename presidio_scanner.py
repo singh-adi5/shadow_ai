@@ -109,6 +109,14 @@ except OSError as exc:
         "spaCy language model unavailable (%s) — regex fallback active. "
         "Run: python -m spacy download en_core_web_lg", exc,
     )
+except SystemExit as exc:
+    # See the matching comment in scanner_worker.py._worker_init — an
+    # invalid PRESIDIO_SPACY_MODEL name makes spaCy's download-CLI call
+    # sys.exit() internally instead of raising a normal exception.
+    logger.warning(
+        "Presidio init aborted via SystemExit (%s) — check PRESIDIO_SPACY_MODEL "
+        "is a real, installed model name. Regex fallback active.", exc,
+    )
 
 
 # ---------------------------------------------------------------------------

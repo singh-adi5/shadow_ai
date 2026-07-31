@@ -56,9 +56,30 @@ NORMAL_ENDPOINTS: dict[str, str] = {
 def _fake_email() -> str:
     return f"user{random.randint(1, 9999)}@company-internal.com"
 
+def _luhn_check_digit(partial_number: str) -> str:
+    """Compute the check digit that makes partial_number + digit pass Luhn."""
+    total = 0
+    for i, ch in enumerate(reversed(partial_number)):
+        d = int(ch)
+        if i % 2 == 0:
+            d *= 2
+            if d > 9:
+                d -= 9
+        total += d
+    return str((10 - total % 10) % 10)
+
 def _fake_credit_card() -> str:
-    # Luhn-invalid prefix 4111 — clearly test data
-    return f"4111-1111-{random.randint(1000, 9999)}-{random.randint(1000, 9999)}"
+    # 4111 1111 1111 — the industry-standard VISA test prefix, universally
+    # recognized as non-production test data by every payment processor's
+    # sandbox. Made genuinely Luhn-valid (unlike a fully random suffix):
+    # Presidio's built-in CREDIT_CARD recognizer validates the Luhn
+    # checksum, so a random/invalid suffix is silently never detected once
+    # real Presidio is active — masked only by the regex fallback, which
+    # doesn't check the checksum. "Clearly test data" now comes from the
+    # well-known reserved prefix, not from being deliberately invalid.
+    partial = "411111111111" + f"{random.randint(0, 999):03d}"  # 12 fixed + 3 random = 15 digits
+    full = partial + _luhn_check_digit(partial)                 # + 1 check digit = 16 digits
+    return f"{full[0:4]}-{full[4:8]}-{full[8:12]}-{full[12:16]}"
 
 def _fake_ssn() -> str:
     return f"{random.randint(100, 999)}-{random.randint(10, 99)}-{random.randint(1000, 9999)}"

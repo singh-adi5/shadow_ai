@@ -50,6 +50,14 @@ jobs:
     name: Test (full Presidio/spaCy stack — advisory)
     runs-on: ubuntu-latest
     continue-on-error: true
+    env:
+      # AnalyzerEngine() with no explicit config defaults to en_core_web_lg
+      # regardless of what's installed — this MUST match whatever model
+      # "Download spaCy model" below actually downloads, or Presidio init
+      # silently tries to auto-download the ~400MB default model instead
+      # (confirmed locally; this was the actual cause of this job's
+      # earlier failure, not a dependency issue). See presidio_recognizers.py.
+      PRESIDIO_SPACY_MODEL: en_core_web_sm
     steps:
       - uses: actions/checkout@v4
 
